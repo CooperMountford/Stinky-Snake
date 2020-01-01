@@ -37,8 +37,16 @@ def ping():
 def start():
 
     data = bottle.request.json
+
+    # Color fliping code to visually see that the snake is loading each run
+    flip = random.randint(0, 1)
+    if (flip == 0):
+        color = "#101ade"
+    else:
+        color = "#f016c0"
+
     return {
-        "color": "#f016cb",
+        "color": color,
 	    'headType': "fang",
 	    "tailType": "hook"
     }
@@ -51,7 +59,7 @@ class Point:
         self.x = x
         self.y = y
 
-    # Deleted an equal test method. Not sure what I'd need it
+    # Deleted a test equal method. Not sure what I'd need it
 
     def pointString(self):
         return str(self.x) + ', ' + str(self.y)
@@ -66,7 +74,7 @@ class Point:
                 closest = point
         return closest
 
-    def distance(self, other):
+    def distance(self, other): #
         return abs(self.x - other.x) + abs(self.y - other.y)
 
     # Not sure if I really need these
@@ -94,12 +102,25 @@ class Point:
         return(Point(self.x, self.y-1))
 
     def fourAround(self):
+        # Movement options, clockwise from top (up)
         return [self.up(), self.right(), self.down(), self.left()]
+
+    def eightAround(self):
+        # Movement options, clockwise from top (up)
+        return[self.up(), self.up().right(), self.right(), self.right().down(), self.down(), self.down().left(), self.left(), self.left().up()]
 
 class Snake:
     def __init__(self, board, data):
         self.board = board
         self.id = data['id']
+        self.health = data['health']
+        self.head = Point(data['body'][0]['x'], data['body'][0]['y'])
+        self.body = []
+        self.head = Point(data['body'][-1]['x'], data['body'][-1]['y'])
+
+        for tile in data['body']:
+            self.body.append(tile)
+
 
         #and so on
 
@@ -110,28 +131,50 @@ class Board:
     def __init__(self, data):
         self.width = data['board']['width']
         self.height = data['board']['height']
+        self.food = []
+        self.snakes = []
+        self.heads = []
+        self.occupied = []
+        self.me = data['you']['id']
+        self.turn = data['turn']
+
+        for food in data['board']['food']:
+            self.food.append(Point(food['x'], food['y']))
+
+        for snake in data['board']['snakes']:
+            for tile in snake:
+                self.occupied.append(Point(tile['x'], tile['y']))
+            if(snake.id != self.me):
+                self.snakes.append(snake)
+                self.heads.append(snake.head)
+
 
         #and so on
 
-        # Information about where things are and A* Pathing
+    def visualize(self):
+        # Prints a visual of the game board
+        visual = np.matrix(self)
+        print(visual)
+
+        #TODO: Board print out is reflected and backwards for some reason and I can't figure it out
+        #visual = np.rot90(visual)
+        #visual = np.flip(visual, 0)
+        #visual = np.flip(visual, 1)
+
+
+    # TODO: Add methods about where things are and A* Pathing
 
 def newMove():
     data = bottle.request.json
 
     board = Board(data)
     snake = board.player
-    #snake.choseMove()
+    snake.choseMove()
 
     return{
         'move': snake.next_move,
         'taunt': 'Uh-Oh! Stinky!' # Not sure if taunt is still used or not. Theres nothing in the documentation about it at all
     }
-
-
-
-
-
-
 
 def move():
     """
@@ -168,7 +211,7 @@ def move():
 
         else:
             for i, tile in enumerate(snake['body']):
-                print('i: ' + str(i))
+                #print('i: ' + str(i))
                 #print('tile: ' + tile)
                 if(i == 0):
                     board[tile['x']][tile['y']] = 'mh'
@@ -192,8 +235,9 @@ def move():
     #visual = np.flip(visual, 0)
     #visual = np.flip(visual, 1)
 
+    # Prints a visual of the game board
     visual = np.matrix(board)
-    print(visual)
+    #print(visual)
 
     me = data['you']
     x = me['body'][0]['x']
